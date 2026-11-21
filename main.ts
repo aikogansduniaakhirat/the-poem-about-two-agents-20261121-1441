@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Preserve the line breaks, including the stanza break; no trailing newline.
@@ -37,8 +37,19 @@ function main(): number {
   }
 
   const outputDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
-  mkdirSync(outputDir, { recursive: true });
-  writeFileSync(join(outputDir, "entry.txt"), POEM, "utf8");
+  try {
+    mkdirSync(outputDir, { recursive: true });
+    const outputPath = join(outputDir, "entry.txt");
+    writeFileSync(outputPath, POEM, "utf8");
+    if (!readFileSync(outputPath).equals(Buffer.from(POEM, "utf8"))) {
+      process.stderr.write("Output verification failed: entry.txt bytes do not match the poem.\n");
+      return 1;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Failed to write or verify poem: ${message}\n`);
+    return 1;
+  }
   process.stdout.write(`${report.codePoints} code points, ${report.bytes} bytes written\n`);
   return 0;
 }
